@@ -4,12 +4,13 @@
 # @raycast.description Open current Safari URL in new tab in Chrome
 # @raycast.author Dave Lehman
 # @raycast.authorURL https://github.com/dlehman
-# I got it from https://github.com/raycast/script-commands/blob/master/commands/apps/safari/safari-current-page-url-in-chrome.applescript
 
 # @raycast.icon images/safari.png
 # @raycast.mode silent
 # @raycast.packageName Safari
 # @raycast.schemaVersion 1
+
+# Source: https://github.com/raycast/script-commands/blob/master/commands/apps/safari/safari-current-page-url-in-chrome.applescript
 
 tell application "Safari"
 	set safariUrl to URL of front document
