@@ -1,0 +1,23 @@
+{
+  "input_url": "https://archive.ph/pbb2L",
+  "source_url": "https://archive.ph/pbb2L",
+  "archive_url": "https://archive.ph/pbb2L",
+  "attempted_archive_urls": [
+    "https://archive.ph/pbb2L"
+  ],
+  "archive_verified": false,
+  "title": "archive.ph",
+  "metadata": {
+    "title": "archive.ph",
+    "source": "https://archive.ph/pbb2L"
+  },
+  "extraction_path": "reader fallback for original URL",
+  "warnings": [
+    "Archive source returned a security challenge: https://archive.ph/pbb2L",
+    "Target URL returned error 429: Too Many Requests",
+    "This page maybe requiring CAPTCHA, please make sure you are authorized to access this page.",
+    "Used reader fallback because archive.ph was unavailable or challenged.",
+    "Extracted content may be short, noisy, or paywall-limited; inspect article.md."
+  ],
+  "article_path": "/Users/ohong/dev/scripts/outputs/archive-article/pbb2L/article.md"
+}

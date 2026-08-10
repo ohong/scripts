@@ -1,4 +1,6 @@
 require("hs.ipc")
+hs.ipc.cliInstall()
+hs.autoLaunch(true)
 
 -- Per-app key handling.
 --
@@ -12,6 +14,11 @@ local sidebarToggleKeyCode = hs.keycodes.map.s
 chromeCopyUrl = chromeCopyUrl or {}
 chromeSidebarToggle = chromeSidebarToggle or {}
 chromeSidebarToggle.tasks = chromeSidebarToggle.tasks or {}
+
+local sidebarToggleButtonNames = {
+  ["collapse tabs"] = true,
+  ["expand tabs"] = true,
+}
 
 local sidebarTogglePaths = {
   "/Users/ohong/Library/Application Support/com.raycast-x.macos/extensions/toggle-chrome-sidebar/bin/toggle-chrome-sidebar",
@@ -55,29 +62,91 @@ local function removeSidebarToggleTask(task)
   end
 end
 
-local function toggleChromeSidebar()
-  local path = executableSidebarTogglePath()
-  if not path then
-    hs.printf("Toggle Chrome sidebar failed: Raycast helper not found")
-    return false
-  end
-
+local function toggleChromeSidebarWithHelper(path)
   local task
   task = hs.task.new(path, function(exitCode, _, stdErr)
     removeSidebarToggleTask(task)
     if exitCode ~= 0 then
-      hs.printf("Toggle Chrome sidebar failed: %s", stdErr or ("exit " .. tostring(exitCode)))
+      hs.printf("Toggle Chrome sidebar helper failed: %s", stdErr or ("exit " .. tostring(exitCode)))
     end
   end)
 
   if not task then
-    hs.printf("Toggle Chrome sidebar failed: could not start helper")
+    hs.printf("Toggle Chrome sidebar helper failed: could not start helper")
     return false
   end
 
   table.insert(chromeSidebarToggle.tasks, task)
   return task:start()
 end
+
+local function axAttribute(element, attribute)
+  local ok, value = pcall(function()
+    return element:attributeValue(attribute)
+  end)
+
+  if ok then
+    return value
+  end
+
+  return nil
+end
+
+local function isSidebarToggleButton(element)
+  if axAttribute(element, "AXRole") ~= "AXButton" then
+    return false
+  end
+
+  local title = string.lower(axAttribute(element, "AXTitle") or "")
+  local description = string.lower(axAttribute(element, "AXDescription") or "")
+
+  return sidebarToggleButtonNames[title] or sidebarToggleButtonNames[description] or false
+end
+
+local function findSidebarToggleButton(element, depth)
+  if not element or depth > 30 then
+    return nil
+  end
+
+  if isSidebarToggleButton(element) then
+    return element
+  end
+
+  for _, child in ipairs(axAttribute(element, "AXChildren") or {}) do
+    local found = findSidebarToggleButton(child, depth + 1)
+    if found then
+      return found
+    end
+  end
+
+  return nil
+end
+
+local function toggleChromeSidebar()
+  local helperPath = executableSidebarTogglePath()
+  if helperPath then
+    return toggleChromeSidebarWithHelper(helperPath)
+  end
+
+  local app = hs.application.get(chromeBundleID)
+  if not app then
+    hs.printf("Toggle Chrome sidebar failed: Chrome is not running")
+    return false
+  end
+
+  for _, window in ipairs(app:allWindows()) do
+    local button = findSidebarToggleButton(hs.axuielement.windowElement(window), 0)
+    if button then
+      button:performAction("AXPress")
+      return true
+    end
+  end
+
+  hs.printf("Toggle Chrome sidebar failed: Expand/Collapse Tabs button not found")
+  return false
+end
+
+chromeSidebarToggle.toggle = toggleChromeSidebar
 
 local function copyChromeActiveTabUrl()
   local ok, url = hs.osascript.applescript([[

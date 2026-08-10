@@ -13,33 +13,17 @@ cp hammerspoon/init.lua ~/.hammerspoon/init.lua
 It gives Chrome two app-scoped shortcuts:
 
 - `Cmd+Shift+C` copies the active tab URL and shows a small confirmation toast.
-- `Cmd+S` toggles Chrome's vertical tabs sidebar through the Raycast extension
-  helper.
+- `Cmd+S` expands or collapses Chrome's vertical tabs sidebar without changing
+  Chrome's tab position setting.
 
 The event taps only swallow those shortcuts while Chrome is frontmost, so Arc,
 Dia, and other apps keep their own native shortcuts.
 
-## Raycast Extensions
+## Chrome Sidebar
 
-Chrome sidebar toggling is handled by the upstream Raycast extension
-[`saqibameen/chrome-sidebar-toggle`](https://github.com/saqibameen/chrome-sidebar-toggle).
-The local shell and Swift implementation was removed so the Raycast extension is
-the single owner for that behavior.
-
-Installed checkout:
-
-```sh
-/Users/ohong/dev/chrome-sidebar-toggle
-```
-
-The local Raycast extension was installed from commit
-`91ce1ecc72d7a072461ca350431a94bf97035ea1` with:
-
-```sh
-npm install
-npm run dev
-```
-
-Do not assign the Chrome sidebar command a Raycast hotkey if the key should be
-free in other apps. Raycast command hotkeys are global, so Hammerspoon owns the
-Chrome-only `Cmd+S` binding and calls the compiled Raycast helper directly.
+Chrome sidebar toggling is handled directly by Hammerspoon with macOS
+accessibility scripting. On machines with the Raycast `toggle-chrome-sidebar`
+helper installed, Hammerspoon calls that helper; otherwise it falls back to
+pressing Chrome's `Expand tabs` / `Collapse tabs` button itself. It never invokes
+`Show tabs vertically`, because that command changes Chrome's `Tab position`
+setting between vertical and horizontal.
