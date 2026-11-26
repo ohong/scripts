@@ -80,21 +80,22 @@ local function toggleChromeSidebar()
 end
 
 local function copyChromeActiveTabUrl()
-  local ok, url = hs.osascript.applescript([[
-    tell application "Google Chrome"
-      if (count of windows) > 0 then
-        return URL of active tab of front window
-      end if
-    end tell
-    return ""
-  ]])
+  -- Chrome's AppleScript window collection is unavailable in some macOS
+  -- automation contexts. Use Chrome's own address-bar commands instead.
+  hs.eventtap.keyStroke({"cmd"}, "l")
+  hs.timer.usleep(100000)
+  hs.eventtap.keyStroke({"cmd"}, "c")
+  hs.timer.usleep(100000)
+  local url = hs.pasteboard.getContents()
+  hs.timer.doAfter(0.1, function()
+    hs.eventtap.keyStroke({}, "escape")
+  end)
 
-  if ok and url ~= "" then
-    hs.pasteboard.setContents(url)
+  if url and url ~= "" then
     return true
   end
 
-  hs.printf("Copy Chrome URL failed: %s", url)
+  hs.printf("Copy Chrome URL failed: clipboard was empty")
   return false
 end
 
