@@ -1,0 +1,99 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+count="${1:-20}"
+if [[ ! "$count" =~ '^[1-9][0-9]*$' ]] || (( count > 100 )); then
+  print -u2 "usage: codex-token-audit [1-100]"
+  exit 2
+fi
+
+for command in jq rg; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    print -u2 "codex-token-audit: required command not found: $command"
+    exit 1
+  fi
+done
+
+sessions_root="${CODEX_HOME:-$HOME/.codex}/sessions"
+if [[ ! -d "$sessions_root" ]]; then
+  print -u2 "codex-token-audit: sessions directory not found: $sessions_root"
+  exit 1
+fi
+
+all_sessions=("${(@f)$(rg --files "$sessions_root" -g '*.jsonl' | sort)}")
+if (( ${#all_sessions} == 0 )); then
+  print "No Codex sessions found."
+  exit 0
+fi
+
+start=1
+if (( ${#all_sessions} > count )); then
+  start=$(( ${#all_sessions} - count + 1 ))
+fi
+
+rows=()
+for (( index = start; index <= ${#all_sessions}; index++ )); do
+  session="${all_sessions[$index]}"
+  row=$(jq -nr --arg path "$session" '
+    reduce inputs as $item (
+      {
+        path: $path,
+        id: "unknown",
+        cwd: "unknown",
+        model: "unknown",
+        turns: 0,
+        calls: 0,
+        total: 0,
+        cached: 0,
+        fresh: 0,
+        output: 0
+      };
+      if $item.type == "session_meta" then
+        .id = ($item.payload.id // .id)
+        | .cwd = ($item.payload.cwd // .cwd)
+      elif $item.type == "turn_context" then
+        .model = ($item.payload.model // .model)
+      elif $item.type == "event_msg" and $item.payload.type == "task_started" then
+        .turns += 1
+      elif $item.type == "response_item"
+        and ($item.payload.type == "function_call" or $item.payload.type == "custom_tool_call") then
+        .calls += 1
+      elif $item.type == "event_msg" and $item.payload.type == "token_count"
+        and $item.payload.info.total_token_usage != null then
+        .total = ($item.payload.info.total_token_usage.total_tokens // .total)
+        | .cached = ($item.payload.info.total_token_usage.cached_input_tokens // .cached)
+        | .fresh = (($item.payload.info.total_token_usage.input_tokens // 0)
+          - ($item.payload.info.total_token_usage.cached_input_tokens // 0))
+        | .output = ($item.payload.info.total_token_usage.output_tokens // .output)
+      else . end
+    )
+    | [.total, .fresh, .cached, .output, .turns, .calls, .model, .cwd, .id]
+    | @tsv
+  ' "$session")
+  rows+=("$row")
+done
+
+print "Latest ${#rows} Codex sessions, ranked by processed tokens"
+print
+printf '%s\n' "${rows[@]}" \
+  | sort -t $'\t' -k1,1nr \
+  | awk -F '\t' '
+      BEGIN {
+        printf "%-12s %12s %12s %10s %7s %7s  %-16s  %s\n", \
+          "processed", "fresh input", "cached input", "output", "turns", "calls", "model", "cwd"
+      }
+      {
+        printf "%-12s %12s %12s %10s %7d %7d  %-16s  %s\n", \
+          human($1), human($2), human($3), human($4), $5, $6, $7, $8
+      }
+      function human(value) {
+        if (value >= 1000000) return sprintf("%.2fM", value / 1000000)
+        if (value >= 1000) return sprintf("%.1fK", value / 1000)
+        return value
+      }
+    '
+
+print
+print "Processed tokens are cumulative model input plus output. Fresh input excludes"
+print "cached replay. High call counts usually identify the best round-trip savings."

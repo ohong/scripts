@@ -1,3 +1,8 @@
-bin/
+bin/*
+!bin/codex-token-audit
 .agents/
 .claude/
+
+# Local machine snapshots
+Brewfile.casks
+app-audit.md

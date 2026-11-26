@@ -1,6 +1,17 @@
 # scripts
 Some scripts I run to automate common computer tasks. Feel free to copy &amp; use!
 
+## Codex token audit
+
+`bin/codex-token-audit` ranks recent Codex sessions by processed tokens and shows
+fresh input, cached input, output, turns, and tool-call counts. Use it to find
+workflows with excessive context replay or tool round trips without confusing
+cached tokens with newly processed context.
+
+```sh
+bin/codex-token-audit 20
+```
+
 ## Hammerspoon
 
 `hammerspoon/init.lua` is the active Hammerspoon config. Install or update it
